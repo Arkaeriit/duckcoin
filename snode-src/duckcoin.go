@@ -40,7 +40,7 @@ var (
 	Difficulty, _ = new(big.Int).SetString("0000100000000000000000000000000000000000000000000000000000000000", 16)
 
 	HelpMsg = `Duckcoin - quack money
-Usage: duckcoin [<num of blocks>] [-t/--to <pubkey> -a/--amount <quacks> -m/--message <msg>]
+Usage: duckcoin [<num of blocks>] [-d/--data <data field> -t/--to <pubkey> -a/--amount <quacks> -m/--message <msg>]
 When run without arguments, Duckcoin mines Quacks to the key in ~/.config/duckcoin/pubkey.pem
 Examples:
    duckcoin
@@ -56,6 +56,7 @@ func main() {
 		receiver        string
 		address         string
 		data            string
+		transactionData string
 		numOfBlocks     int64 = math.MaxInt64
 		pubkey, privkey string
 	)
@@ -79,6 +80,13 @@ func main() {
 	if ok, i := util.ArgsHaveOption("message", "m"); ok {
 		if len(os.Args) < i+2 {
 			fmt.Println("Too few arguments to --message")
+			return
+		}
+		transactionData = os.Args[i+1]
+	}
+	if ok, i := util.ArgsHaveOption("data", "d"); ok {
+		if len(os.Args) < i+2 {
+			fmt.Println("Too few arguments to --data")
 			return
 		}
 		data = os.Args[i+1]
@@ -136,16 +144,21 @@ func main() {
 		return
 	}
 
+	// Default data string
+	if len(data) < 1 {
+		data = "Mined by the Arkaeriit's unofficial Duckcoin CLI client."
+	}
+
 	//fmt.Println(Difficulty)
 
-	mine(amount, numOfBlocks, receiver, address, data, privkey, pubkey)
+	mine(amount, numOfBlocks, receiver, address, transactionData, privkey, pubkey, data)
 }
 
 // mine mines numOfBlocks blocks, with the Transaction's arbitrary data field set to data if amount is not 0.
 // It also takes in the receiver's address and amount to send in each block, if amount is not 0
 //
 // mine also uses the global variables pubkey, privkey and address
-func mine(amount, numOfBlocks int64, receiver, address, data, privkey, pubkey string) {
+func mine(amount, numOfBlocks int64, receiver, address, transactionData, privkey, pubkey string, data string) {
 	var i int64
 	var b util.Block
 	for ; i < numOfBlocks; i++ {
@@ -162,9 +175,9 @@ func mine(amount, numOfBlocks int64, receiver, address, data, privkey, pubkey st
 			blockChan <- b
 
 			makeBlock(
-				blockChan, privkey, "Mined by the official Duckcoin CLI User: "+Username, address,
+				blockChan, privkey, data, address,
 				util.Transaction{
-					Data:      data,
+					Data:      transactionData,
 					Sender:    address,
 					Receiver:  receiver,
 					Amount:    amount,
@@ -270,7 +283,8 @@ Mine:
 			if i&(1<<17-1) == 0 && i != 0 { // optimize to check every 131072 iterations (bitwise ops are faster)
 				fmt.Printf("Approx hashrate: %0.2f. Have checked %d hashes.\n", float64(i)/time.Since(hashRateStartTime).Seconds(), i)
 			}
-			if !util.IsHashSolutionBytes(util.CalculateHashBytes(newBlock), Difficulty) {
+			//if !util.IsHashSolutionBytes(util.CalculateHashBytes(newBlock), Difficulty) { //TODO: update to proper code when Ishan will release the update utils.go
+			if !util.IsHashSolution(util.CalculateHash(newBlock), 5) {
 				continue
 			} else {
 				fmt.Println("\nBlock made! It took", time.Since(t).Round(time.Second/100))
