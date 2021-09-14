@@ -41,7 +41,7 @@ var (
 
 	HelpMsg = `Duckcoin - quack money
 Usage: duckcoin [<num of blocks>] [-d/--data <data field> -t/--to <pubkey> -a/--amount <quacks> -m/--message <msg>]
-When run without arguments, Duckcoin mines Quacks to the key in ~/.config/duckcoin/pubkey.pem
+When run without arguments, Duckcoin prints this message. Ask for 0 block to mine indefinitely.
 Examples:
    duckcoin
    duckcoin 4 # mines 4 blocks
@@ -61,7 +61,7 @@ func main() {
 		pubkey, privkey string
 	)
 
-	if ok, _ := util.ArgsHaveOption("help", "h"); ok {
+	if ok, _ := util.ArgsHaveOption("help", "h"); ok || len(os.Args) <= 1 {
 		fmt.Println(HelpMsg)
 		return
 	}
@@ -112,6 +112,10 @@ func main() {
 			fmt.Println(err)
 			return
 		}
+	}
+
+	if numOfBlocks == 0 {
+		numOfBlocks = math.MaxInt64
 	}
 
 	err = os.MkdirAll(ConfigDir, 0700)
