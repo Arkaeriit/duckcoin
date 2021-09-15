@@ -40,7 +40,7 @@ var (
 	Difficulty, _ = new(big.Int).SetString("0000100000000000000000000000000000000000000000000000000000000000", 16)
 
 	HelpMsg = `Duckcoin - quack money
-Usage: duckcoin [<num of blocks>] [-d/--data <data field> -t/--to <pubkey> -a/--amount <quacks> -m/--message <msg>]
+Usage: duckcoin [<num of blocks>] [-d/--data <data field> -w/--workers <number of parallel workers> -t/--to <pubkey> -a/--amount <quacks> -m/--message <msg>]
 When run without arguments, Duckcoin prints this message. Ask for 0 block to mine indefinitely.
 Examples:
    duckcoin
@@ -59,6 +59,7 @@ func main() {
 		transactionData string
 		numOfBlocks     int64 = math.MaxInt64
 		pubkey, privkey string
+        numberOfWorkers int64 = 1
 	)
 
 	if ok, _ := util.ArgsHaveOption("help", "h"); ok || len(os.Args) <= 1 {
@@ -103,6 +104,17 @@ func main() {
 			return
 		}
 		amount = int64(ducks * float64(util.MicroquacksPerDuck))
+	}
+	if ok, i := util.ArgsHaveOption("workers", "w"); ok {
+		if len(os.Args) < i+2 {
+			fmt.Println("Too few arguments to --workers")
+			return
+		}
+		numberOfWorkers, err = strconv.ParseInt(os.Args[i+1], 10, 64)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
 	}
 	if len(os.Args) > 1 {
 		i, err := strconv.ParseInt(os.Args[1], 10, 64)
@@ -150,19 +162,30 @@ func main() {
 
 	// Default data string
 	if len(data) < 1 {
-		data = "Mined by the Arkaeriit's unofficial Duckcoin CLI client."
+		data = "Mined by Arkaeriit's unofficial Duckcoin CLI client."
 	}
 
 	//fmt.Println(Difficulty)
 
-	mine(amount, numOfBlocks, receiver, address, transactionData, privkey, pubkey, data)
+    var i int64
+    var replyChans = make([]chan int, numberOfWorkers)
+    for i=0; i<numberOfWorkers; i++ {
+        replyChans[i] = make(chan int, 1)
+        time.Sleep(time.Duration(i))
+        go mine(amount, numOfBlocks, receiver, address, transactionData, privkey, pubkey, data, replyChans[i])
+    }
+    for i=0; i<numberOfWorkers; i++ {
+        <- replyChans[i]
+    }
+
 }
 
 // mine mines numOfBlocks blocks, with the Transaction's arbitrary data field set to data if amount is not 0.
 // It also takes in the receiver's address and amount to send in each block, if amount is not 0
 //
 // mine also uses the global variables pubkey, privkey and address
-func mine(amount, numOfBlocks int64, receiver, address, transactionData, privkey, pubkey string, data string) {
+func mine(amount, numOfBlocks int64, receiver, address, transactionData, privkey, pubkey string, data string, reply chan int) {
+    defer func() {reply <- 1}()
 	var i int64
 	var b util.Block
 	for ; i < numOfBlocks; i++ {
