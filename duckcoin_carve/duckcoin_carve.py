@@ -5,7 +5,7 @@
 import subprocess
 import sys
 
-DATA_MAX_SIZE = 50 * 1024
+DATA_MAX_SIZE = 1 * 1024
 
 # This function write each string in the lst argument to the duckcoin blockchain
 def write_list(snode_exec, lst):
