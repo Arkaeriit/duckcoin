@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 
+# This is a tool used to send text files to archive them in the duckcoin blockchain.
+
 import subprocess
+import sys
 
 DATA_MAX_SIZE = 50 * 1024
 
@@ -31,11 +34,28 @@ def cut_long_text(txt_in, max_size):
 
 #print(cut_long_text("La dqzdsejh  hje jhse fjh jh djq djqz djhqz djhqz djhqz dqzjh djqzh dqzjd jqzhd qzjd qzjh dqzdqzid qzd qzd qzdqz dqz d qzd qzd zdzdqdqzfrftg trrssfefrg gtnuehfyusryfseydusefys fef fseyfstbtvfsvefysensueinidqendi euiqdnuiqendiuqndiqneindiqeni",10))
 
-def send_str_in_blockchain(snode_exec, txt_in):
-    write_list(snode_exec, cut_long_text(txt_in, DATA_MAX_SIZE))
+def add_sufix_to_lines(text_cut, name):
+    for i in range(len(text_cut)):
+        postfix = "\n        " + name + " - " + str(i+1) + "/" + str(len(text_cut)) + "\n"
+        text_cut[i] = text_cut[i] + postfix
 
-f = open("test.txt", "r")
-test_str = f.read()
-f.close()
-send_str_in_blockchain("../snode-src/duckcoin", test_str)
+def send_str_in_blockchain(snode_exec, txt_in, name):
+    text_cut = cut_long_text(txt_in, DATA_MAX_SIZE)
+    add_sufix_to_lines(text_cut, name)
+    write_list(snode_exec, text_cut)
+
+def send_file_in_blockchain(snode_exec, filename):
+    f = open(filename, "r")
+    test_str = f.read()
+    f.close()
+    send_str_in_blockchain(snode_exec, test_str, filename)
+
+def main():
+    if len(sys.argv) != 3:
+        print("Usage: duckcoin_carve.py <snode binary> <file to carve>")
+    else:
+        send_file_in_blockchain(sys.argv[1], sys.argv[2])
+
+if __name__ == "__main__":
+    main()
 
